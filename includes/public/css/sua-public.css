@@ -1,0 +1,163 @@
+/* General Form Container Styling */
+.sua-form-container {
+    max-width: 420px;
+    margin: 2em auto;
+    padding: 2em;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+.sua-form-container h2 {
+    text-align: center;
+    margin-bottom: 1.5em;
+    color: #333;
+    font-weight: 600;
+}
+
+/* Input Fields */
+.sua-form-field {
+    margin-bottom: 1.5em;
+}
+
+.sua-form-field label {
+    display: block;
+    margin-bottom: 0.5em;
+    color: #555;
+    font-weight: 500;
+}
+
+.sua-form-field input[type="text"],
+.sua-form-field input[type="email"],
+.sua-form-field input[type="tel"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+.sua-form-field input[type="text"]:focus,
+.sua-form-field input[type="email"]:focus,
+.sua-form-field input[type="tel"]:focus {
+    border-color: #0073aa;
+    outline: none;
+}
+
+/* Checkbox (Terms of Service) */
+.sua-form-field-checkbox {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5em;
+}
+
+.sua-form-field-checkbox input {
+    margin-right: 0.75em;
+}
+
+/* Submit Button */
+.sua-form-submit .sua-submit-button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 6px;
+    background-color: #0073aa;
+    color: white;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.sua-form-submit .sua-submit-button:hover:not(:disabled) {
+    background-color: #005a87;
+}
+
+.sua-form-submit .sua-submit-button:disabled {
+    background-color: #a0a5aa;
+    cursor: not-allowed;
+}
+
+/* Google Button */
+.sua-google-button-container {
+    text-align: center;
+    margin-bottom: 1.5em;
+}
+.sua-google-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: #fff;
+    cursor: pointer;
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+.sua-google-button:hover {
+    background-color: #f5f5f5;
+}
+.sua-google-button img {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+
+/* Or Separator */
+.sua-separator {
+    text-align: center;
+    margin: 1.5em 0;
+    color: #999;
+}
+
+/* Notices (Error/Success Messages) */
+.sua-notice {
+    padding: 1em;
+    margin-bottom: 1.5em;
+    border-radius: 6px;
+    border: 1px solid transparent;
+}
+.sua-notice-error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+.sua-notice-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+/* OTP Verification Form Specifics */
+#sua-otp-form .sua-form-field input {
+    text-align: center;
+    font-size: 1.5em;
+    letter-spacing: 0.5em;
+}
+#sua-resend-otp-container {
+    text-align: center;
+    margin-top: 1.5em;
+}
+#sua-resend-otp-button {
+    background: none;
+    border: none;
+    color: #0073aa;
+    cursor: pointer;
+    text-decoration: underline;
+}
+#sua-resend-otp-button:disabled {
+    color: #999;
+    text-decoration: none;
+    cursor: not-allowed;
+}
+#sua-otp-countdown {
+    color: #777;
+    margin-left: 0.5em;
+}
+
+
