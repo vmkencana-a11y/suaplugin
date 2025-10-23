@@ -87,8 +87,17 @@ class SUA_Admin {
         add_settings_field('recaptcha_secret_key', 'Secret Key', [$callbacks, 'password_callback'], $general_page_slug, 'sua_recaptcha_section', ['name' => 'recaptcha_secret_key']);
         add_settings_field('recaptcha_threshold', 'Score Threshold', [$callbacks, 'text_callback'], $general_page_slug, 'sua_recaptcha_section', ['name' => 'recaptcha_threshold', 'type' => 'number', 'step' => '0.1', 'min' => '0.0', 'max' => '1.0']);
         
+        
+        add_settings_section('sua_rate_limit_section', 'Pengaturan Rate Limit (Pembatasan)', null, $general_page_slug);
+        add_settings_field('record_user_ip', 'Catat IP Pengguna', [$callbacks, 'toggle_switch_callback'], $general_page_slug, 'sua_rate_limit_section', ['name' => 'record_user_ip']);
+        add_settings_field('rate_limit_register_ip', 'Batas Pendaftaran (per Jam per IP)', [$callbacks, 'text_callback'], $general_page_slug, 'sua_rate_limit_section', ['name' => 'rate_limit_register_ip', 'type' => 'number', 'description' => 'Default: 10. Jumlah pendaftaran maks. dari 1 IP per jam. Isi 0 untuk menonaktifkan.']);
+        add_settings_field('rate_limit_login_email', 'Batas Login Dengan Email', [$callbacks, 'text_callback'], $general_page_slug, 'sua_rate_limit_section', ['name' => 'rate_limit_login_email', 'type' => 'number', 'description' => 'Default: 3. Jumlah permintaan login maks. per email. Isi 0 untuk menonaktifkan.']);
+        add_settings_field('rate_limit_login_whatsapp', 'Batas Login Dengan No WA', [$callbacks, 'text_callback'], $general_page_slug, 'sua_rate_limit_section', ['name' => 'rate_limit_login_whatsapp', 'type' => 'number', 'description' => 'Default: 3. Jumlah permintaan login maks. per No. WA. Isi 0 untuk menonaktifkan.']);
+        add_settings_field('rate_limit_login_ip', 'Batas Login Per IP', [$callbacks, 'text_callback'], $general_page_slug, 'sua_rate_limit_section', ['name' => 'rate_limit_login_ip', 'type' => 'number', 'description' => 'Default: 6. Jumlah permintaan login maks. dari 1 IP (global). Isi 0 untuk menonaktifkan.']);
+        add_settings_field('rate_limit_login_period', 'Waktu Pembatasan Login (menit)', [$callbacks, 'text_callback'], $general_page_slug, 'sua_rate_limit_section', ['name' => 'rate_limit_login_period', 'type' => 'number', 'description' => 'Default: 10. Durasi pembatasan login dalam menit.']);
+        add_settings_field('rate_limit_otp_attempts', 'Batas Percobaan Verifikasi Salah', [$callbacks, 'text_callback'], $general_page_slug, 'sua_rate_limit_section', ['name' => 'rate_limit_otp_attempts', 'type' => 'number', 'description' => 'Default: 3. Jumlah percobaan salah maks. sebelum sesi dibatalkan. Isi 0 untuk menonaktifkan.']);
+
         add_settings_section('sua_otp_section', 'Pengaturan OTP', null, $general_page_slug);
-        add_settings_field('record_user_ip', 'Catat IP Pengguna', [$callbacks, 'toggle_switch_callback'], $general_page_slug, 'sua_otp_section', ['name' => 'record_user_ip']);
         add_settings_field('otp_digits', 'Jumlah Digit OTP', [$callbacks, 'text_callback'], $general_page_slug, 'sua_otp_section', ['name' => 'otp_digits', 'type' => 'number']);
         add_settings_field('otp_validity', 'Masa Berlaku OTP (detik)', [$callbacks, 'text_callback'], $general_page_slug, 'sua_otp_section', ['name' => 'otp_validity', 'type' => 'number']);
         add_settings_field('otp_resend_wait', 'Waktu Tunggu Kirim Ulang OTP (detik)', [$callbacks, 'text_callback'], $general_page_slug, 'sua_otp_section', ['name' => 'otp_resend_wait', 'type' => 'number']);
@@ -202,21 +211,50 @@ class SUA_Admin {
     }
 
     public function handle_user_status_update() {
-        if ( ! check_ajax_referer('sua_update_user_status_nonce', 'nonce', false) ) {
-            wp_send_json_error(['message' => 'Pemeriksaan keamanan gagal.'], 403);
-        }
-        if (!current_user_can('edit_users')) {
-            wp_send_json_error(['message' => 'Anda tidak memiliki izin.']);
-        }
-        $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
-        $meta_key = isset($_POST['meta_key']) ? sanitize_key($_POST['meta_key']) : '';
-        $new_status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
-        if ($user_id > 0 && in_array($meta_key, ['membership_status', 'ekyc_status'])) {
-            update_user_meta($user_id, $meta_key, $new_status);
-            clean_user_cache($user_id);
-            wp_send_json_success(['message' => 'Status pengguna berhasil diperbarui.']);
-        } else {
-            wp_send_json_error(['message' => 'Data tidak valid.']);
-        }
+    // 1️⃣ Cek nonce keamanan
+    if ( ! check_ajax_referer('sua_update_user_status_nonce', 'nonce', false) ) {
+        wp_send_json_error(['message' => 'Pemeriksaan keamanan gagal.'], 403);
     }
+
+    // 2️⃣ Validasi izin admin/editor
+    if ( ! current_user_can('edit_users') ) {
+        wp_send_json_error(['message' => 'Anda tidak memiliki izin.']);
+    }
+
+    // 3️⃣ Ambil data input
+    $user_id    = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+    $meta_key   = isset($_POST['meta_key']) ? sanitize_key($_POST['meta_key']) : '';
+    $new_status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+
+    // 4️⃣ Validasi dan proses
+    if ( $user_id > 0 && in_array($meta_key, ['membership_status', 'ekyc_status'], true) ) {
+
+        // Update status user
+        update_user_meta($user_id, $meta_key, $new_status);
+        clean_user_cache($user_id);
+
+        // 5️⃣ Jika status membership dibanned → hapus semua sesi aktif
+        if ($meta_key === 'membership_status' && $new_status === 'banned') {
+            if (class_exists('WP_Session_Tokens')) {
+                $sessions = WP_Session_Tokens::get_instance($user_id);
+                $sessions->destroy_all();
+            }
+
+            // Opsional: kirim notifikasi email
+            $user = get_user_by('ID', $user_id);
+            if ($user && !empty($user->user_email)) {
+                wp_mail(
+                    $user->user_email,
+                    __('Akun Anda Telah Diblokir', 'simple-user-access'),
+                    __('Akun Anda telah diblokir oleh administrator. Silakan hubungi dukungan jika ini kesalahan.', 'simple-user-access')
+                );
+            }
+        }
+
+        wp_send_json_success(['message' => 'Status pengguna berhasil diperbarui.']);
+    } else {
+        wp_send_json_error(['message' => 'Data tidak valid.']);
+    }
+}
+
 }

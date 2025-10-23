@@ -120,12 +120,35 @@ class SUA_Helpers {
         return wp_mail($user->user_email, $subject, wpautop($body), $headers);
     }
     
+    /**
+     * REVISI: Tambahkan fungsi helper baru ini
+     * untuk mengirim Email OTP tanpa user_id (untuk alur registrasi)
+     */
+    public static function send_otp_email_direct($email_to, $display_name, $otp_code) {
+        $subject = self::get_setting('otp_email_subject', 'Kode Verifikasi Anda');
+        $body = self::get_setting('otp_email_body', 'Kode verifikasi Anda adalah: {otp_code}');
+        
+        $body = str_replace('{display_name}', $display_name, $body);
+        $body = str_replace('{otp_code}', $otp_code, $body);
+
+        $headers = ['Content-Type: text/html; charset=UTF-8'];
+        return wp_mail($email_to, $subject, wpautop($body), $headers);
+    }
+    
     public static function send_otp_whatsapp($user_id, $otp_code) {
         $user = get_userdata($user_id);
         $whatsapp_no = get_user_meta($user_id, 'no_whatsapp', true);
 
         if(empty($whatsapp_no)) return false;
 
+        return self::send_otp_whatsapp_direct($whatsapp_no, $user->display_name, $otp_code);
+    }
+
+    /**
+     * REVISI: Fungsi helper baru untuk mengirim WA tanpa user_id
+     * Ini akan digunakan oleh alur registrasi
+     */
+    public static function send_otp_whatsapp_direct($whatsapp_no, $display_name, $otp_code) {
         $endpoint = self::get_setting('waha_api_endpoint');
         $session = self::get_setting('waha_session_name', 'default');
         $api_key = self::get_setting('waha_api_key');
@@ -138,7 +161,7 @@ class SUA_Helpers {
             return false;
         }
 
-        $message = str_replace(['{display_name}', '{otp_code}'], [$user->display_name, $otp_code], $template);
+        $message = str_replace(['{display_name}', '{otp_code}'], [$display_name, $otp_code], $template);
         
         $whatsapp_no = preg_replace('/[^0-9]/', '', $whatsapp_no);
 
