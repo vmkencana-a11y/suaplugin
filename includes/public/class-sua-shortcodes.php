@@ -51,13 +51,14 @@ class SUA_Shortcodes {
 
     public function otp_verification_form_view($atts) {
         if (!session_id()) { session_start(); }
-        if (empty($_SESSION['sua_verifying_user_id'])) {
+
+        // REVISI: Periksa apakah salah satu dari sesi login ATAU sesi registrasi ada.
+        if (empty($_SESSION['sua_verifying_user_id']) && empty($_SESSION['sua_verifying_reg_key'])) {
             return '<div class="sua-notice sua-notice-error">Sesi verifikasi tidak valid atau telah berakhir. Silakan ulangi proses login/pendaftaran.</div>';
         }
+        
         ob_start();
         require SUA_PLUGIN_DIR . 'includes/public/views/shortcode-otp-verification-form.php';
         return ob_get_clean();
     }
 }
-
-
