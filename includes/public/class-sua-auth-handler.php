@@ -329,9 +329,16 @@ class SUA_Auth_Handler {
 
         $first_name = sanitize_text_field($_POST['sua_first_name']);
         $last_name = sanitize_text_field($_POST['sua_last_name']);
-        $whatsapp = sanitize_text_field($_POST['sua_whatsapp']);
+        $whatsapp_input = sanitize_text_field($_POST['sua_whatsapp']);
 
-        // REVISI: Periksa apakah WA sudah terdaftar
+        // REVISI: Normalisasi nomor WA segera
+        $whatsapp = preg_replace('/[^0-9]/', '', $whatsapp_input);
+        $default_country_code = SUA_Helpers::get_setting('whatsapp_default_country_code');
+        if (!empty($default_country_code) && substr($whatsapp, 0, 1) === '0') {
+            $whatsapp = $default_country_code . substr($whatsapp, 1);
+        }
+
+        // REVISI: Periksa apakah WA (yang sudah dinormalisasi) sudah terdaftar
         if (get_users(['meta_key' => 'no_whatsapp', 'meta_value' => $whatsapp])) {
             SUA_Helpers::add_notice('Nomor WhatsApp ini sudah terdaftar. Silakan gunakan form login.');
             return;
@@ -395,8 +402,15 @@ class SUA_Auth_Handler {
         $period_minutes = (int) SUA_Helpers::get_setting('rate_limit_login_period', 10); // Default 10
         $period_seconds = $period_minutes * MINUTE_IN_SECONDS;
 
-        $whatsapp = sanitize_text_field($_POST['sua_whatsapp']);
+        $whatsapp_input = sanitize_text_field($_POST['sua_whatsapp']);
         $ip = SUA_Helpers::get_user_ip();
+
+        // REVISI: Normalisasi nomor WA sebelum query
+        $whatsapp = preg_replace('/[^0-9]/', '', $whatsapp_input);
+        $default_country_code = SUA_Helpers::get_setting('whatsapp_default_country_code');
+        if (!empty($default_country_code) && substr($whatsapp, 0, 1) === '0') {
+            $whatsapp = $default_country_code . substr($whatsapp, 1);
+        }
 
         $transient_key_wa = 'sua_login_wa_' . md5($whatsapp);
         $transient_key_ip = 'sua_login_ip_' . md5($ip);

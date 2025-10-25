@@ -35,19 +35,28 @@ class SUA_Public {
      */
     public function enqueue_styles_and_scripts() {
         wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/sua-public.css', array(), $this->version, 'all');
-        wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/sua-public.js', array('jquery'), $this->version, true);
+
+        // REVISI: Tentukan dependensi dasar
+        $dependencies = ['jquery'];
         
         $site_key = SUA_Helpers::get_setting('recaptcha_site_key');
 
+        // REVISI: Muat script Google reCAPTCHA *sebelum* script plugin Anda, jika ada site key
+        if (!empty($site_key)) {
+            wp_enqueue_script('google-recaptcha', "https://www.google.com/recaptcha/api.js?render={$site_key}", [], null, true);
+            // REVISI: Tambahkan 'google-recaptcha' sebagai dependensi
+            $dependencies[] = 'google-recaptcha';
+        }
+
+        // REVISI: Muat script plugin Anda (sua-public.js) *setelahnya*, dengan dependensi yang benar
+        wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/sua-public.js', $dependencies, $this->version, true);
+        
+        // Lokalisisasi variabel tetap sama
         wp_localize_script($this->plugin_name, 'sua_public_vars', [
             'ajax_url' => admin_url('admin-ajax.php'),
             'resend_otp_nonce' => wp_create_nonce('sua_resend_otp_nonce'),
             'recaptcha_site_key' => $site_key,
         ]);
-
-        if (!empty($site_key)) {
-            wp_enqueue_script('google-recaptcha', "https://www.google.com/recaptcha/api.js?render={$site_key}", [], null, true);
-        }
     }
     
     /**
@@ -108,7 +117,7 @@ class SUA_Public {
             return;
         }
 
-        $allowed_actions = ['logout', 'lostpassword', 'rp', 'resetpass', 'postpass'];
+        $allowed_actions = ['logout', 'postpass'];
         $action = isset($_GET['action']) ? $_GET['action'] : '';
 
         if ( 

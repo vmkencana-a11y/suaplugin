@@ -20,7 +20,7 @@ $otp_digits = SUA_Helpers::get_setting('otp_digits', 6);
     <form id="sua-otp-form" class="sua-form" action="" method="post">
         <div class="sua-form-field">
             <label for="sua_otp_code">Masukan Kode OTP</label>
-            <input type="text" id="sua_otp_code" name="sua_otp_code" required maxlength="<?php echo esc_attr($otp_digits); ?>" pattern="\d{<?php echo esc_attr($otp_digits); ?>}">
+            <input type="text" id="sua_otp_code" name="sua_otp_code" required maxlength="<?php echo esc_attr($otp_digits); ?>" autocomplete="one-time-code" inputmode="numeric">
         </div>
         
         <?php 

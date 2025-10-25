@@ -179,7 +179,8 @@ class SUA_Admin {
     }
 
     public function add_custom_user_columns($columns) {
-        $columns['membership_status'] = 'Membership Status';
+        $columns['no_whatsapp'] = 'No WhatsApp';
+        $columns['membership_status'] = 'Membership';
         $columns['ekyc_status'] = 'e-KYC Status';
         $options = get_option('sua_settings');
         if (!empty($options['record_user_ip'])) {
@@ -200,11 +201,14 @@ class SUA_Admin {
                 return "<label class='sua-switch'><input type='checkbox' class='sua-status-toggle' value='{$status}' data-user-id='{$user_id}' data-meta-key='ekyc_status' data-on-value='verified' data-off-value='unverified' {$checked}><span class='sua-slider sua-round'></span></label>";
             case 'ip_address':
                 return esc_html(get_user_meta($user_id, 'ip_address', true));
+            case 'no_whatsapp':
+                return esc_html(get_user_meta($user_id, 'no_whatsapp', true));
         }
         return $value;
     }
 
     public function add_sortable_user_columns($columns) {
+        $columns['no_whatsapp'] = 'no_whatsapp';
         $columns['membership_status'] = 'membership_status';
         $columns['ekyc_status'] = 'ekyc_status';
         return $columns;
