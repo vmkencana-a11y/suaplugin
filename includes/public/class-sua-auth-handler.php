@@ -209,11 +209,9 @@ class SUA_Auth_Handler {
 
         // REVISI: Jangan buat user. Buat OTP dan data transient.
         $digits = SUA_Helpers::get_setting('otp_digits', 6);
-        try {
-            $otp = str_pad(random_int(0, pow(10, $digits) - 1), $digits, '0', STR_PAD_LEFT);
-        } catch (Exception $e) {
-            $otp = str_pad(mt_rand(0, pow(10, $digits) - 1), $digits, '0', STR_PAD_LEFT);
-        }
+        // REVISI: Ganti logika OTP lama
+        $otp = SUA_Helpers::generate_secure_otp($digits);
+        // Akhir Revisi
         
         $expiry_seconds = (int) SUA_Helpers::get_setting('otp_validity', 300);
         $otp_expiry_time = time() + $expiry_seconds;
@@ -346,11 +344,9 @@ class SUA_Auth_Handler {
 
         // REVISI: Jangan buat user. Buat OTP dan data transient.
         $digits = SUA_Helpers::get_setting('otp_digits', 6);
-        try {
-            $otp = str_pad(random_int(0, pow(10, $digits) - 1), $digits, '0', STR_PAD_LEFT);
-        } catch (Exception $e) {
-            $otp = str_pad(mt_rand(0, pow(10, $digits) - 1), $digits, '0', STR_PAD_LEFT);
-        }
+        // REVISI: Ganti logika OTP lama
+        $otp = SUA_Helpers::generate_secure_otp($digits);
+        // Akhir Revisi
         
         $expiry_seconds = (int) SUA_Helpers::get_setting('otp_validity', 300);
         $otp_expiry_time = time() + $expiry_seconds;
@@ -491,6 +487,11 @@ class SUA_Auth_Handler {
                 
                 unset($_SESSION['sua_verifying_user_id']);
                 unset($_SESSION['sua_otp_failed_attempts']); // Hapus counter gagal
+                
+                // REVISI: Cegah Session Fixation
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    session_regenerate_id(true);
+                }
 
                 wp_set_current_user($user_id);
                 wp_set_auth_cookie($user_id);
@@ -588,6 +589,15 @@ class SUA_Auth_Handler {
 
                 delete_transient($transient_key);
                 unset($_SESSION['sua_verifying_reg_key']);
+                
+                // REVISI: Cegah Session Fixation
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    session_regenerate_id(true);
+                }
+
+                // Login dan Redirect
+                wp_set_current_user($user_id);
+                wp_set_auth_cookie($user_id);
 
                 // Kirim email selamat datang
                 $welcome_sent = get_user_meta($user_id, '_sua_welcome_email_sent', true);
@@ -596,9 +606,6 @@ class SUA_Auth_Handler {
                     update_user_meta($user_id, '_sua_welcome_email_sent', 'yes');
                 }
 
-                // Login dan Redirect
-                wp_set_current_user($user_id);
-                wp_set_auth_cookie($user_id);
                 wp_redirect(SUA_Helpers::get_redirect_url_for_user($user_id));
                 exit;
 
@@ -710,11 +717,9 @@ class SUA_Auth_Handler {
 
             // Buat OTP baru
             $digits = SUA_Helpers::get_setting('otp_digits', 6);
-            try {
-                $otp = str_pad(random_int(0, pow(10, $digits) - 1), $digits, '0', STR_PAD_LEFT);
-            } catch (Exception $e) {
-                $otp = str_pad(mt_rand(0, pow(10, $digits) - 1), $digits, '0', STR_PAD_LEFT);
-            }
+            // REVISI: Ganti logika OTP lama
+            $otp = SUA_Helpers::generate_secure_otp($digits);
+            // Akhir Revisi
             $expiry_seconds = (int) SUA_Helpers::get_setting('otp_validity', 300);
             
             // Kirim OTP baru

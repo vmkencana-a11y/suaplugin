@@ -77,16 +77,51 @@ class SUA_Helpers {
         } while (username_exists($username));
         return $username;
     }
+
+    /**
+     * REVISI: Helper baru untuk membuat OTP yang aman secara kriptografis
+     * Mengikuti rekomendasi audit (Masalah #3)
+     */
+    public static function generate_secure_otp($digits) {
+        try {
+            // Metode utama dan paling aman
+            if (function_exists('random_int')) {
+                $max = pow(10, $digits) - 1;
+                $num = random_int(0, $max);
+                return str_pad($num, $digits, '0', STR_PAD_LEFT);
+            }
+        } catch (Exception $e) {
+            // Abaikan, lanjut ke fallback
+        }
+
+        // Fallback #1: random_bytes (juga aman)
+        if (function_exists('random_bytes')) {
+            try {
+                $bytes = random_bytes(ceil($digits / 2)); // 1 byte = 2 hex chars
+                $hex = bin2hex($bytes);
+                $num = preg_replace('/[^0-9]/', '', $hex); // Ambil angka saja
+                $num = substr($num, 0, $digits); // Potong
+                if (strlen($num) < $digits) {
+                    // Jika masih kurang, tambahkan dari wp_rand()
+                    $num = str_pad($num, $digits, wp_rand(0, 9));
+                }
+                return $num;
+            } catch (Exception $e) {
+                // Abaikan, lanjut ke fallback
+            }
+        }
+        
+        // Fallback #2: WordPress (aman)
+        // Jangan pernah gunakan mt_rand()
+        return substr(preg_replace('/[^0-9]/', '', wp_generate_password(20, false)), 0, $digits);
+    }
     
     public static function generate_and_send_otp($user_id, $method = 'email') {
         $digits = self::get_setting('otp_digits', 6);
         
-        try {
-            $otp = str_pad(random_int(0, pow(10, $digits) - 1), $digits, '0', STR_PAD_LEFT);
-        } catch (Exception $e) {
-            $otp = str_pad(mt_rand(0, pow(10, $digits) - 1), $digits, '0', STR_PAD_LEFT);
-            self::log_error('random_int() is not available. Falling back to mt_rand().');
-        }
+        // REVISI: Ganti logika OTP lama
+        $otp = self::generate_secure_otp($digits);
+        // Akhir Revisi
         
         $expiry_seconds = self::get_setting('otp_validity', 300);
         $expiry_time = time() + $expiry_seconds;
@@ -222,14 +257,19 @@ class SUA_Helpers {
     }
     
     public static function get_user_ip() {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-        } else {
-            $ip = $_SERVER['REMOTE_ADDR'];
+        // Hanya percayai REMOTE_ADDR.
+        // Header lain seperti HTTP_X_FORWARDED_FOR mudah dipalsukan.
+        // Jika situs berada di belakang proxy terpercaya (CloudFlare/NGINX),
+        // server HARUS dikonfigurasi untuk mengatur REMOTE_ADDR dengan benar.
+        // Plugin tidak boleh mencoba mengurai header yang tidak terpercaya.
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        
+        // Validasi cepat untuk memastikan itu adalah IP
+        if (filter_var($ip, FILTER_VALIDATE_IP)) {
+            return $ip;
         }
-        return $ip;
+
+        return '0.0.0.0';
     }
 
     public static function verify_recaptcha($token) {
