@@ -41,6 +41,10 @@ class SUA_Auth_Handler {
         $required_fields = [];
         if ($action_type === 'register') {
             $required_fields = ['sua_first_name', 'sua_last_name'];
+            if (!isset($_POST['sua_tos']) || $_POST['sua_tos'] !== 'on') {
+            SUA_Helpers::add_notice('Anda harus menerima Syarat & Ketentuan untuk mendaftar.');
+            return false;
+        }
         }
         $field_key = $form_type === 'whatsapp' ? 'sua_whatsapp' : 'sua_email';
         $required_fields[] = $field_key;
@@ -66,12 +70,17 @@ class SUA_Auth_Handler {
             exit;
         }
 
+        if (session_status() === PHP_SESSION_NONE) { session_start(); }
+        $state = wp_generate_password(32, false);
+        $_SESSION['sua_google_oauth_state'] = $state;
+
         $auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
-            'client_id' => $client_id,
-            'redirect_uri' => $redirect_uri,
-            'response_type' => 'code',
-            'scope' => 'openid email profile',
-            'prompt' => 'select_account'
+        'client_id' => $client_id,
+        'redirect_uri' => $redirect_uri,
+        'response_type' => 'code',
+        'scope' => 'openid email profile',
+        'prompt' => 'select_account',
+        'state' => $state
         ]);
 
         wp_redirect($auth_url);
@@ -79,6 +88,20 @@ class SUA_Auth_Handler {
     }
     
     public function handle_google_callback() {
+
+        // Mulai sesi untuk memeriksa state
+        if (session_status() === PHP_SESSION_NONE) { session_start(); }
+
+        // Verifikasi state
+        if (!isset($_GET['state']) || !isset($_SESSION['sua_google_oauth_state']) || $_GET['state'] !== $_SESSION['sua_google_oauth_state']) {
+        SUA_Helpers::add_notice('Permintaan tidak valid atau sesi telah kedaluwarsa. Silakan coba lagi.');
+        wp_redirect(SUA_Helpers::get_login_page_url());
+        exit;
+        }
+
+        // Hapus state setelah digunakan
+        unset($_SESSION['sua_google_oauth_state']);
+
         if (!isset($_GET['code'])) {
             SUA_Helpers::add_notice('Gagal menerima kode otorisasi dari Google.');
             wp_redirect(SUA_Helpers::get_login_page_url());
@@ -299,6 +322,8 @@ class SUA_Auth_Handler {
         }
 
         SUA_Helpers::generate_and_send_otp($user->ID, 'email');
+        
+        unset($_SESSION['sua_verifying_reg_key']); // Hapus sesi registrasi jika ada
         $_SESSION['sua_verifying_user_id'] = $user->ID;
 
         wp_redirect(SUA_Helpers::get_verification_page_url());
@@ -444,6 +469,7 @@ class SUA_Auth_Handler {
         }
 
         SUA_Helpers::generate_and_send_otp($user->ID, 'whatsapp');
+        unset($_SESSION['sua_verifying_reg_key']); // Hapus sesi registrasi jika ada
         $_SESSION['sua_verifying_user_id'] = $user->ID;
 
         wp_redirect(SUA_Helpers::get_verification_page_url());
@@ -640,6 +666,10 @@ class SUA_Auth_Handler {
     }
 
     public function handle_ajax_resend_otp() {
+
+        if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+        }
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'sua_resend_otp_nonce')) {
             wp_send_json_error(['message' => 'Pemeriksaan keamanan gagal.']);
         }
