@@ -22,14 +22,28 @@ class SUA_Public {
     }
     
     /**
-     * Start the session reliably.
+     * Start the session reliably and conditionally.
+     * Versi ini HANYA menangani halaman frontend (non-admin/non-REST/non-AJAX)
+     * untuk memperbaiki Site Health.
      */
     public function start_session() {
+        // 1. Jika sesi sudah aktif, jangan lakukan apa-apa.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return;
+        }
+
+        // 2. JANGAN mulai sesi untuk admin, REST, cron, ATAU AJAX APAPUN.
+        // Ini adalah kunci untuk memuaskan Site Health Check.
+        if ( is_admin() || (defined('REST_REQUEST') && REST_REQUEST) || defined('DOING_CRON') || (defined('DOING_AJAX') && DOING_AJAX) ) {
+            return;
+        }
+
+        // 3. Jika lolos (hanya halaman frontend murni), jalankan session.
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
     }
-
+    
     /**
      * Enqueue styles and scripts for the public-facing side of the site.
      */
@@ -82,11 +96,6 @@ class SUA_Public {
         // Only process standard form submissions if one of our actions is present.
         if (!isset($_POST['sua_action']) && !isset($_GET['sua-action'])) {
             return;
-        }
-
-        // The session is only started when processing a form submission.
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
         }
 
         if (isset($_POST['sua_action'])) {

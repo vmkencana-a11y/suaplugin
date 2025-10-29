@@ -93,4 +93,16 @@ class SUA_Settings_Callbacks {
             echo '<p class="description">' . wp_kses_post($args['description']) . '</p>';
         }
     }
+    public function recaptcha_test_button_callback() {
+    echo '<button type="button" id="sua-test-recaptcha-btn" class="button">Jalankan Tes Verifikasi Secret Key</button>';
+    echo '<p class="description">Ini akan memeriksa apakah Secret Key Anda valid dengan mengirim permintaan tes ke Google.</p>';
+    echo '<span id="sua-recaptcha-test-status" style="margin-left: 10px;"></span>';
+    }
+
+    public function waha_test_button_callback() {
+    echo '<input type="tel" id="sua-waha-test-number" placeholder="Contoh: 628123456789" class="regular-text" style="width: 200px; margin-right: 10px;">';
+    echo '<button type="button" id="sua-test-waha-btn" class="button">Kirim Pesan Tes</button>';
+    echo '<p class="description">Masukkan nomor WA lengkap (dengan kode negara) untuk mengirim pesan tes. Pastikan pengaturan WAHA di atas sudah disimpan.</p>';
+    echo '<span id="sua-waha-test-status" style="margin-left: 10px;"></span>';
+    }
 }

@@ -54,6 +54,64 @@ jQuery(document).ready(function($) {
             $switch.prop('checked', !$switch.prop('checked')); // Revert on failure
         });
     });
+    // Handler untuk Tombol Tes reCAPTCHA
+    $('#sua-test-recaptcha-btn').on('click', function() {
+    const $button = $(this);
+    const $status = $('#sua-recaptcha-test-status');
+    
+    $button.prop('disabled', true);
+    $status.text('Menjalankan tes...').css('color', 'blue');
+
+    const data = {
+        action: 'sua_test_recaptcha',
+        nonce: sua_admin_vars.test_nonce // Menggunakan nonce tes baru
+    };
+
+    $.post(sua_admin_vars.ajax_url, data, function(response) {
+        if (response.success) {
+            $status.text(response.data.message).css('color', 'green');
+        } else {
+            $status.text(response.data.message).css('color', 'red');
+        }
+        $button.prop('disabled', false);
+    }).fail(function() {
+        $status.text('Gagal terhubung ke server.').css('color', 'red');
+        $button.prop('disabled', false);
+    });
+    });
+
+// Handler untuk Tombol Tes WAHA
+    $('#sua-test-waha-btn').on('click', function() {
+    const $button = $(this);
+    const $status = $('#sua-waha-test-status');
+    const testNumber = $('#sua-waha-test-number').val();
+
+    if (!testNumber) {
+        $status.text('Harap masukkan nomor tes.').css('color', 'red');
+        return;
+    }
+
+    $button.prop('disabled', true);
+    $status.text('Mengirim pesan...').css('color', 'blue');
+
+    const data = {
+        action: 'sua_test_waha',
+        nonce: sua_admin_vars.test_nonce,
+        test_number: testNumber
+    };
+
+    $.post(sua_admin_vars.ajax_url, data, function(response) {
+        if (response.success) {
+            $status.text(response.data.message).css('color', 'green');
+        } else {
+            $status.text(response.data.message).css('color', 'red');
+        }
+        $button.prop('disabled', false);
+    }).fail(function() {
+        $status.text('Gagal terhubung ke server.').css('color', 'red');
+        $button.prop('disabled', false);
+    });
+    });
 });
 
 

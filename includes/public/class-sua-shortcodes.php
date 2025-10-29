@@ -50,7 +50,6 @@ class SUA_Shortcodes {
     }
 
     public function otp_verification_form_view($atts) {
-        if (!session_id()) { session_start(); }
 
         // REVISI: Periksa apakah salah satu dari sesi login ATAU sesi registrasi ada.
         if (empty($_SESSION['sua_verifying_user_id']) && empty($_SESSION['sua_verifying_reg_key'])) {

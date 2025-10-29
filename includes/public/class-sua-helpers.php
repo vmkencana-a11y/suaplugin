@@ -329,4 +329,54 @@ class SUA_Helpers {
 
         return true;
     }
+    /**
+     * Menguji apakah reCAPTCHA Secret Key valid.
+     * @return array ['success' => bool, 'message' => string]
+     */
+    public static function test_recaptcha_secret() {
+        $secret = self::get_setting('recaptcha_secret_key');
+        if (empty($secret)) {
+            return ['success' => false, 'message' => 'Secret Key belum diisi.'];
+        }
+
+        // PERBAIKAN: Kirim 'response' palsu untuk memaksa Google memvalidasi 'secret'.
+        $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', [
+            'body' => [
+                'secret'   => $secret,
+                'response' => 'dummy-test-token' // Ini adalah token palsu
+            ],
+        ]);
+
+        if (is_wp_error($response)) {
+            return ['success' => false, 'message' => 'Gagal terhubung ke Google: ' . $response->get_error_message()];
+        }
+
+        $result = json_decode(wp_remote_retrieve_body($response), true);
+
+        // Jika $result adalah null (JSON tidak valid)
+        if (empty($result)) {
+             return ['success' => false, 'message' => 'Respons tidak valid (bukan JSON) dari Google.'];
+        }
+
+        // Periksa error-codes
+        if (isset($result['error-codes']) && is_array($result['error-codes'])) {
+            // 1. Jika secret key-nya yang salah
+            if (in_array('invalid-input-secret', $result['error-codes'])) {
+                return ['success' => false, 'message' => 'Secret Key TIDAK VALID.'];
+            }
+            // 2. Jika secret key-nya BENAR (dan token palsu kita yang salah)
+            if (in_array('invalid-input-response', $result['error-codes'])) {
+                return ['success' => true, 'message' => 'Koneksi Berhasil! Secret Key Anda valid.'];
+            }
+        }
+        
+        // 3. Jika $result['success'] adalah true (tidak mungkin, tapi untuk jaga-jaga)
+        if (isset($result['success']) && $result['success'] === true) {
+             return ['success' => true, 'message' => 'Koneksi Berhasil! (Respons Sukses Diterima)'];
+        }
+
+        // 4. Jika Google mengembalikan respons lain yang tidak kita duga
+        $unknown_response = json_encode($result);
+        return ['success' => false, 'message' => 'Respons tidak diketahui dari Google: ' . $unknown_response];
+    }
 }

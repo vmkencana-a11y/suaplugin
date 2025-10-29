@@ -29,13 +29,31 @@ class SUA_Admin {
     }
 
     public function enqueue_styles_and_scripts($hook_suffix) {
-        wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/sua-admin.css', array(), $this->version, 'all');
+        
+        // Daftar semua halaman admin yang digunakan oleh plugin ini
+        $plugin_pages = [
+            'users.php',                                    // Halaman daftar pengguna
+            'toplevel_page_simple-user-access',             // Halaman Pengaturan Umum
+            'user-access_page_sua-google-settings',         // Halaman Pengaturan Google
+            'user-access_page_sua-email-settings',          // Halaman Pengaturan Email
+            'user-access_page_sua-whatsapp-settings',       // Halaman Pengaturan WhatsApp
+            'user-access_page_sua-activity-log'             // Halaman Log (dari Implementasi 2)
+        ];
 
-        if ('users.php' === $hook_suffix) {
+        // Hanya muat aset kita jika berada di salah satu halaman plugin
+        if (in_array($hook_suffix, $plugin_pages)) {
+            
+            // Muat CSS Admin
+            wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/sua-admin.css', array(), $this->version, 'all');
+
+            // Muat JS Admin
             wp_enqueue_script($this->plugin_name . '-user-script', plugin_dir_url(__FILE__) . 'js/sua-admin.js', ['jquery'], $this->version, true);
+
+            // Lokalisisasi variabel untuk JS (termasuk nonce tes yang baru)
             wp_localize_script($this->plugin_name . '-user-script', 'sua_admin_vars', [
-                'ajax_url' => admin_url('admin-ajax.php'),
-                'nonce'    => wp_create_nonce('sua_update_user_status_nonce')
+                'ajax_url'   => admin_url('admin-ajax.php'),
+                'nonce'      => wp_create_nonce('sua_update_user_status_nonce'),
+                'test_nonce' => wp_create_nonce('sua_api_test_nonce') // Nonce untuk tombol tes
             ]);
         }
     }
@@ -43,9 +61,10 @@ class SUA_Admin {
     public function create_admin_menu() {
         add_menu_page('Simple User Access', 'User Access', 'manage_options', $this->plugin_name, [$this, 'render_settings_page'], 'dashicons-admin-users', 81);
         add_submenu_page($this->plugin_name, 'Pengaturan Umum', 'Pengaturan Umum', 'manage_options', $this->plugin_name, [$this, 'render_settings_page']);
-        add_submenu_page($this->plugin_name, 'Pengaturan Login Google', 'Login Google', 'manage_options', 'sua-google-settings', [$this, 'render_settings_page']);
-        add_submenu_page($this->plugin_name, 'Pengaturan Login Email', 'Login Email', 'manage_options', 'sua-email-settings', [$this, 'render_settings_page']);
-        add_submenu_page($this->plugin_name, 'Pengaturan Login WhatsApp', 'Login WhatsApp', 'manage_options', 'sua-whatsapp-settings', [$this, 'render_settings_page']);
+        add_submenu_page($this->plugin_name, 'Pengaturan Login Google', 'Daftar/Login Google', 'manage_options', 'sua-google-settings', [$this, 'render_settings_page']);
+        add_submenu_page($this->plugin_name, 'Pengaturan Login Email', 'Daftar/Login Email', 'manage_options', 'sua-email-settings', [$this, 'render_settings_page']);
+        add_submenu_page($this->plugin_name, 'Pengaturan Login WhatsApp', 'Daftar/Login WhatsApp', 'manage_options', 'sua-whatsapp-settings', [$this, 'render_settings_page']);
+        add_submenu_page($this->plugin_name, 'Log Aktivitas', 'Log Aktivitas', 'manage_options', 'sua-activity-log', [$this, 'render_log_page']);
     }
 
     /**
@@ -86,7 +105,7 @@ class SUA_Admin {
         add_settings_field('recaptcha_site_key', 'Site Key', [$callbacks, 'password_callback'], $general_page_slug, 'sua_recaptcha_section', ['name' => 'recaptcha_site_key']);
         add_settings_field('recaptcha_secret_key', 'Secret Key', [$callbacks, 'password_callback'], $general_page_slug, 'sua_recaptcha_section', ['name' => 'recaptcha_secret_key']);
         add_settings_field('recaptcha_threshold', 'Score Threshold', [$callbacks, 'text_callback'], $general_page_slug, 'sua_recaptcha_section', ['name' => 'recaptcha_threshold', 'type' => 'number', 'step' => '0.1', 'min' => '0.0', 'max' => '1.0']);
-        
+        add_settings_field('recaptcha_test_button', 'Uji reCAPTCHA', [$callbacks, 'recaptcha_test_button_callback'], $general_page_slug, 'sua_recaptcha_section');
         
         add_settings_section('sua_rate_limit_section', 'Pengaturan Rate Limit (Pembatasan)', null, $general_page_slug);
         add_settings_field('record_user_ip', 'Catat IP Pengguna', [$callbacks, 'toggle_switch_callback'], $general_page_slug, 'sua_rate_limit_section', ['name' => 'record_user_ip']);
@@ -134,6 +153,7 @@ class SUA_Admin {
         add_settings_field('whatsapp_default_country_code', 'Kode Negara Default', [$callbacks, 'text_callback'], $whatsapp_page_slug, 'sua_whatsapp_api_section', ['name' => 'whatsapp_default_country_code', 'description' => 'Contoh: 62 untuk Indonesia. Kosongkan jika tidak diperlukan.']);
         add_settings_field('waha_api_key', 'WAHA API Key (Opsional)', [$callbacks, 'password_callback'], $whatsapp_page_slug, 'sua_whatsapp_api_section', ['name' => 'waha_api_key']);
         add_settings_field('waha_message_template', 'Template Pesan WhatsApp', [$callbacks, 'textarea_callback'], $whatsapp_page_slug, 'sua_whatsapp_api_section', ['name' => 'waha_message_template', 'description' => 'Placeholder yang tersedia: <code>{display_name}</code>, <code>{otp_code}</code>']);
+        add_settings_field('waha_test_button', 'Uji WAHA', [$callbacks, 'waha_test_button_callback'], $whatsapp_page_slug, 'sua_whatsapp_api_section');
         
         add_settings_section('sua_whatsapp_shortcodes_section', 'Shortcode Form WhatsApp', null, $whatsapp_page_slug);
         add_settings_field('whatsapp_register_shortcode', 'Form Daftar', [$callbacks, 'shortcode_display_callback'], $whatsapp_page_slug, 'sua_whatsapp_shortcodes_section', ['shortcode' => '[sua_whatsapp_register_form]']);
@@ -259,6 +279,107 @@ class SUA_Admin {
     } else {
         wp_send_json_error(['message' => 'Data tidak valid.']);
     }
+}
+
+/**
+ * Menangani panggilan AJAX untuk menguji koneksi WAHA.
+ */
+public function handle_test_waha() {
+    if (!check_ajax_referer('sua_api_test_nonce', 'nonce', false)) {
+        wp_send_json_error(['message' => 'Pemeriksaan keamanan gagal.'], 403);
+    }
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Anda tidak memiliki izin.'], 403);
+    }
+
+    $test_number = sanitize_text_field($_POST['test_number'] ?? '');
+    if (empty($test_number)) {
+        wp_send_json_error(['message' => 'Nomor tes WA tidak boleh kosong.']);
+    }
+
+    $message = "Ini adalah pesan tes dari " . get_bloginfo('name') . ". Jika Anda menerima ini, pengaturan WAHA Anda sudah benar.";
+
+    // Gunakan helper yang ada, tapi panggil langsung
+    $sent = SUA_Helpers::send_otp_whatsapp_direct($test_number, 'Admin Test', $message);
+
+    if ($sent) {
+        wp_send_json_success(['message' => 'Pesan tes berhasil dikirim ke ' . $test_number]);
+    } else {
+        // Ambil notice error yang mungkin diset oleh helper
+        $notices = get_transient('sua_notices');
+        delete_transient('sua_notices');
+        $error_message = $notices[0]['message'] ?? 'Gagal mengirim pesan. Periksa log error.';
+        wp_send_json_error(['message' => $error_message]);
+    }
+}
+
+/**
+ * Menangani panggilan AJAX untuk menguji reCAPTCHA Secret.
+ */
+public function handle_test_recaptcha() {
+    if (!check_ajax_referer('sua_api_test_nonce', 'nonce', false)) {
+        wp_send_json_error(['message' => 'Pemeriksaan keamanan gagal.'], 403);
+    }
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Anda tidak memiliki izin.'], 403);
+    }
+
+    // Panggil helper baru (yang akan kita buat di Langkah 5)
+    $result = SUA_Helpers::test_recaptcha_secret();
+
+    if ($result['success']) {
+        wp_send_json_success(['message' => $result['message']]);
+    } else {
+        wp_send_json_error(['message' => $result['message']]);
+    }
+}
+
+/**
+ * Merender halaman admin untuk menampilkan log aktivitas.
+ */
+public function render_log_page() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'sua_logs';
+
+    // Ambil 100 log terbaru
+    $logs = $wpdb->get_results(
+        $wpdb->prepare("SELECT * FROM $table_name ORDER BY timestamp DESC LIMIT %d", 100)
+    );
+    ?>
+    <div class="wrap">
+        <h1>Log Aktivitas Simple User Access (100 Terbaru)</h1>
+        <p>Menampilkan kejadian login, registrasi, dan upaya yang gagal.</p>
+
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th style="width: 160px;">Waktu</th>
+                    <th style="width: 120px;">Tipe Kejadian</th>
+                    <th>Pesan</th>
+                    <th style="width: 100px;">User ID</th>
+                    <th style="width: 120px;">Alamat IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($logs)) : ?>
+                    <tr>
+                        <td colspan="5">Belum ada log yang tercatat.</td>
+                    </tr>
+                <?php else : ?>
+                    <?php foreach ($logs as $log) : ?>
+                        <tr>
+                            <td><?php echo esc_html($log->timestamp); ?></td>
+                            <td><strong><?php echo esc_html($log->event_type); ?></strong></td>
+                            <td><?php echo esc_html($log->message); ?></td>
+                            <td><?php echo $log->user_id ? esc_html($log->user_id) : 'N/A'; ?></td>
+                            <td><?php echo esc_html($log->ip_address); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php
 }
 
 }
